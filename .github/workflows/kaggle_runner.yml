@@ -1,8 +1,12 @@
-name: Execute Kaggle Notebook Every 5 Minutes
+name: Execute Kaggle Notebook
 
 on:
+  push:
+    branches:
+      - main
+      - master
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/6 * * * *'
   workflow_dispatch:
 
 jobs:
