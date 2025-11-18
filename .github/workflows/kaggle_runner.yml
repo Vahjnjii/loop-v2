@@ -4,7 +4,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '50 */11 * * *'  # Every 11 hours 50 minutes (runs at :50 of every 11th hour)
+    - cron: '0 */12 * * *'  # Every 12 hours (00:00 and 12:00 UTC)
   workflow_dispatch:
 jobs:
   run-notebook:
@@ -65,4 +65,4 @@ jobs:
           echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Next Run:** 11 hours 50 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** 12 hours" >> $GITHUB_STEP_SUMMARY
