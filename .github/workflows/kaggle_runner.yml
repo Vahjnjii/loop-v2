@@ -1,4 +1,4 @@
-name: Execute Kaggle Notebook with All Datasets
+name: Execute Kaggle Notebook with Datasets
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
       - master
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - name: Install Kaggle API
         run: pip install kaggle
       
-      - name: Configure Kaggle API and Execute Notebook with Datasets
+      - name: Configure Kaggle API and Execute Notebook
         env:
           KAGGLE_USERNAME: shreevathsbbhh
           KAGGLE_KEY: 9f167cdee8a045c97ca6a2f82c6701f9
@@ -30,60 +30,40 @@ jobs:
           mkdir -p ~/.kaggle
           echo '{"username":"'$KAGGLE_USERNAME'","key":"'$KAGGLE_KEY'"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          mkdir -p notebook_dir
-          cd notebook_dir
           
           echo "Pulling notebook with metadata..."
-          kaggle kernels pull shreevathsbbhh/new-15 --metadata
+          kaggle kernels pull shreevathsbbhh/new-15 -p ./notebook -m
           
-          echo "Original metadata:"
-          cat kernel-metadata.json
+          if [ ! -f "./notebook/new-15.ipynb" ]; then
+            echo "Failed to download notebook"
+            exit 1
+          fi
           
-          echo "Downloading all datasets attached to notebook..."
+          if [ -f "./notebook/kernel-metadata.json" ]; then
+            echo "Metadata downloaded (datasets preserved)"
+          else
+            echo "No metadata file"
+          fi
+          
+          cd ./notebook
+          
           python3 << 'PYTHON_EOF'
           import json
-          import os
-          import subprocess
-          
           with open('kernel-metadata.json', 'r') as f:
               metadata = json.load(f)
-          
-          print("\n=== Downloading Datasets ===")
-          for dataset in metadata.get('dataset_sources', []):
-              print(f"Downloading dataset: {dataset}")
-              try:
-                  subprocess.run(['kaggle', 'datasets', 'download', '-d', dataset, '--unzip'], check=True)
-              except Exception as e:
-                  print(f"Error downloading {dataset}: {e}")
-          
-          print("\n=== Downloading Competition Data ===")
-          for competition in metadata.get('competition_sources', []):
-              print(f"Downloading competition: {competition}")
-              try:
-                  subprocess.run(['kaggle', 'competitions', 'download', '-c', competition], check=True)
-              except Exception as e:
-                  print(f"Error downloading {competition}: {e}")
-          
-          print("\n=== Kernel Sources ===")
-          for kernel in metadata.get('kernel_sources', []):
-              print(f"Kernel source: {kernel}")
-          
-          metadata['code_file'] = 'notebook.ipynb'
           metadata['enable_gpu'] = False
-          
           with open('kernel-metadata.json', 'w') as f:
               json.dump(metadata, f, indent=2)
-          
-          print("\n=== Final Metadata ===")
-          print(json.dumps(metadata, indent=2))
           PYTHON_EOF
           
-          mv new-15.ipynb notebook.ipynb
+          echo "Pushing to Kaggle..."
+          kaggle kernels push
           
-          echo "\nFiles in notebook directory:"
-          ls -la
+          if [ $? -eq 0 ]; then
+            echo "Push successful"
+          else
+            echo "Push failed"
+            exit 1
+          fi
           
-          echo "\nPushing notebook with all datasets..."
-          kaggle kernels push -p .
-          
-          echo "Notebook with all datasets executed at $(date)"
+          echo "Notebook with datasets executed at $(date)"
