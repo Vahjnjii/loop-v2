@@ -11,24 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Keep Repository Active
-        run: |
-          mkdir -p .github
-          echo "Last run: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" > .github/last-run.txt
-          echo "Trigger: ${{ github.event_name }}" >> .github/last-run.txt
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          git add .github/last-run.txt
-          if ! git diff --staged --quiet; then
-            git commit -m "🤖 Run: $(date -u +%Y-%m-%d-%H%M)"
-            git push
-          fi
-      
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
