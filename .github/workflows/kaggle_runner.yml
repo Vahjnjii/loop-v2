@@ -33,16 +33,16 @@ jobs:
           mkdir -p notebook_dir
           cd notebook_dir
           kaggle kernels pull shreevathsbbhh/new-15 --metadata
-          ls -la
-          if [ -f "new-15.ipynb" ]; then
-            mv new-15.ipynb notebook.ipynb
-          elif [ -f "notebook.ipynb" ]; then
-            echo "notebook.ipynb already exists"
-          else
-            echo "Finding the notebook file..."
-            find . -name "*.ipynb" -exec mv {} notebook.ipynb \;
-          fi
-          sed -i 's/"enable_gpu": true/"enable_gpu": false/g' kernel-metadata.json
-          ls -la
+          mv new-15.ipynb notebook.ipynb
+          python3 << 'PYTHON_EOF'
+          import json
+          with open('kernel-metadata.json', 'r') as f:
+              metadata = json.load(f)
+          metadata['code_file'] = 'notebook.ipynb'
+          metadata['enable_gpu'] = False
+          with open('kernel-metadata.json', 'w') as f:
+              json.dump(metadata, f, indent=2)
+          PYTHON_EOF
+          cat kernel-metadata.json
           kaggle kernels push -p .
           echo "Notebook with datasets executed at $(date)"
