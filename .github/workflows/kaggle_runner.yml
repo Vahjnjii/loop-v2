@@ -1,69 +1,88 @@
-name: Execute Kaggle Notebook with Datasets
-
+name: Run Kaggle Notebook
 on:
   push:
     branches:
       - main
-      - master
+    paths:
+      - '.github/workflows/kaggle-scheduler.yml'
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/10 * * * *'  # Every 10 minutes
   workflow_dispatch:
-
 jobs:
-  run-kaggle-notebook:
+  run-notebook:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Keep Repository Active
+        run: |
+          mkdir -p .github
+          echo "Last run: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" > .github/last-run.txt
+          echo "Trigger: ${{ github.event_name }}" >> .github/last-run.txt
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add .github/last-run.txt
+          if ! git diff --staged --quiet; then
+            git commit -m "🤖 Run: $(date -u +%Y-%m-%d-%H%M)"
+            git push
+          fi
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       
-      - name: Install Kaggle API
-        run: pip install kaggle
+      - name: Install Kaggle CLI
+        run: pip install --quiet kaggle
       
-      - name: Configure Kaggle API and Execute Notebook
-        env:
-          KAGGLE_USERNAME: shreevathsbbhh
-          KAGGLE_KEY: 9f167cdee8a045c97ca6a2f82c6701f9
+      - name: Configure Kaggle Credentials
         run: |
           mkdir -p ~/.kaggle
-          echo '{"username":"'$KAGGLE_USERNAME'","key":"'$KAGGLE_KEY'"}' > ~/.kaggle/kaggle.json
+          echo '{"username":"shreevathsbbhh","key":"9f167cdee8a045c97ca6a2f82c6701f9"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          
-          echo "Pulling notebook with metadata..."
+      
+      - name: Pull Notebook and Metadata from Kaggle
+        run: |
+          echo "📥 Pulling notebook with metadata..."
           kaggle kernels pull shreevathsbbhh/new-15 -p ./notebook -m
-          
           if [ ! -f "./notebook/new-15.ipynb" ]; then
-            echo "Failed to download notebook"
+            echo "❌ Failed to download"
             exit 1
           fi
-          
           if [ -f "./notebook/kernel-metadata.json" ]; then
-            echo "Metadata downloaded (datasets preserved)"
+            echo "✅ Metadata downloaded (datasets preserved)"
           else
-            echo "No metadata file"
+            echo "⚠️ No metadata file"
           fi
-          
+      
+      - name: Push Notebook to Kaggle
+        run: |
           cd ./notebook
-          
-          python3 << 'PYTHON_EOF'
-          import json
-          with open('kernel-metadata.json', 'r') as f:
-              metadata = json.load(f)
-          metadata['enable_gpu'] = False
-          with open('kernel-metadata.json', 'w') as f:
-              json.dump(metadata, f, indent=2)
-          PYTHON_EOF
-          
-          echo "Pushing to Kaggle..."
+          echo "📤 Pushing to Kaggle..."
           kaggle kernels push
-          
           if [ $? -eq 0 ]; then
-            echo "Push successful"
+            echo "✅ Push successful"
           else
-            echo "Push failed"
+            echo "❌ Push failed"
             exit 1
           fi
-          
-          echo "Notebook with datasets executed at $(date)"
+      
+      - name: Verify Execution
+        run: |
+          sleep 20
+          kaggle kernels status shreevathsbbhh/new-15 || true
+          echo "✅ Complete"
+          echo "🔗 https://www.kaggle.com/code/shreevathsbbhh/new-15"
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** 10 minutes" >> $GITHUB_STEP_SUMMARY
