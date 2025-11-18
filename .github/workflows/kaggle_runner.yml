@@ -32,8 +32,8 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           mkdir -p notebook_dir
           cd notebook_dir
-          kaggle kernels pull shreevathsbbhh/new-15
+          kaggle kernels pull shreevathsbbhh/new-15 --metadata
           mv new-15.ipynb notebook.ipynb
-          echo '{"id":"shreevathsbbhh/new-15","title":"new-15","code_file":"notebook.ipynb","language":"python","kernel_type":"notebook","is_private":true,"enable_gpu":true,"enable_tpu":false,"enable_internet":true,"dataset_sources":[],"competition_sources":[],"kernel_sources":[]}' > kernel-metadata.json
+          sed -i 's/"enable_gpu": true/"enable_gpu": false/g' kernel-metadata.json
           kaggle kernels push -p .
-          echo "Notebook executed at $(date)"
+          echo "Notebook with datasets executed at $(date)"
