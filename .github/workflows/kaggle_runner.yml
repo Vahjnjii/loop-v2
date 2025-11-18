@@ -1,0 +1,72 @@
+# This is the complete, single file for your GitHub Action.
+# It will run your Kaggle notebook with its required datasets every 5 minutes.
+
+name: Run Kaggle Notebook Every 5 Minutes
+
+on:
+  # This schedule runs the workflow every 5 minutes.
+  schedule:
+    - cron: '*/5 * * * *'
+  
+  # Allows you to run this workflow manually from the Actions tab as well.
+  workflow_dispatch:
+
+jobs:
+  push-and-run-notebook:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out your repository code
+      # This is needed so the action can find your notebook file.
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      # The Kaggle API is a Python package.
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # Step 3: Install the Kaggle API package
+      - name: Install Kaggle API
+        run: pip install kaggle
+
+      # Step 4: Configure Kaggle API credentials
+      # This step securely creates the required kaggle.json file using the secrets you created.
+      # Your credentials are never exposed in the code.
+      - name: Configure Kaggle API
+        run: |
+          mkdir -p ~/.kaggle
+          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      # Step 5: Create kernel metadata file with dataset sources
+      # This file tells Kaggle which notebook to update and which datasets to attach.
+      - name: Create kernel-metadata.json
+        run: |
+          echo '{
+            "id": "shreevathsbbhh/new-15",
+            "title": "new-15",
+            "code_file": "new-15.ipynb",
+            "language": "python",
+            "kernel_type": "notebook",
+            "is_private": true,
+            "enable_gpu": false,
+            "enable_internet": true,
+            "dataset_sources": [
+              "USERNAME/DATASET-NAME"
+            ],
+            "competition_sources": [],
+            "kernel_sources": []
+          }' > kernel-metadata.json
+        # <-- IMPORTANT: Replace "USERNAME/DATASET-NAME" with your actual dataset identifier.
+        # If you have multiple datasets, add them separated by commas, like this:
+        # "dataset_sources": [
+        #   "username1/dataset-name-1",
+        #   "username2/dataset-name-2"
+        # ]
+
+      # Step 6: Push the notebook to Kaggle to trigger a new run
+      # The "-p ." command tells Kaggle to look for the notebook and metadata in the current directory.
+      - name: Push notebook to Kaggle and execute
+        run: kaggle kernels push -p .
